@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "inspect-backend",
+			"type": "shell",
+			"command": "echo inspect",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}
