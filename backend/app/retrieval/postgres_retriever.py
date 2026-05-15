@@ -7,6 +7,8 @@ when vector stores are unavailable or for supplementary exact-match context.
 import logging
 import uuid
 
+from sqlalchemy import text
+
 from app.retrieval.base import BaseRetriever, RetrievalResult
 from app.db.models import ParsedContent
 from app.db.session import SessionLocal
@@ -118,7 +120,7 @@ class PostgresRetriever(BaseRetriever):
     def is_available(self) -> bool:
         try:
             with SessionLocal() as db:
-                db.execute("SELECT 1")
+                db.execute(text("SELECT 1"))
                 return True
         except Exception:
             return False

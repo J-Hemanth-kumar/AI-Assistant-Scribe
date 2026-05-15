@@ -165,3 +165,41 @@ class MemoryService:
     def get_stats(self) -> dict:
         """Return memory system stats."""
         return self._client.get_stats()
+
+    def get_recent_turns(
+        self,
+        session_id: str,
+        n_pairs: int = 6,
+    ) -> list[dict[str, str]]:
+        """
+        Return the last `n_pairs` user+assistant turn PAIRS for a session.
+
+        Returns a flat list of {role, content} dicts ordered oldest->newest,
+        suitable for direct injection into the Groq messages array as
+        native multi-turn conversation history.
+
+        Why PostgreSQL here and not MemPalace?
+        PostgreSQL ChatMessage rows hold verbatim turns with role metadata.
+        MemPalace stores episodic summaries used by the retrieval pipeline
+        for semantic similarity -- not for exact turn reconstruction.
+        Using the right store for the right job keeps both clean and fast.
+        """
+        try:
+            from sqlalchemy import select
+            with SessionLocal() as db:
+                rows = (
+                    db.execute(
+                        select(ChatMessage.role, ChatMessage.content)
+                        .where(ChatMessage.session_id == uuid.UUID(session_id))
+                        .order_by(ChatMessage.turn_index, ChatMessage.id)
+                    )
+                    .fetchall()
+                )
+            # Take last n_pairs * 2 rows (each pair = 1 user + 1 assistant)
+            tail = rows[-(n_pairs * 2):]
+            return [{"role": r.role, "content": r.content} for r in tail]
+        except Exception:
+            logger.exception(
+                "get_recent_turns failed for session=%s", session_id
+            )
+            return []
