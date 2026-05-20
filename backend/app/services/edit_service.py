@@ -51,11 +51,13 @@ def _apply_edits_to_text(original_chunks: list[ParsedContent], edits: list) -> s
         pc.block_index: pc.text for pc in original_chunks
     }
 
-    # Apply edits
+    # Apply edits — only replace text for content edits (updated_text != "").
+    # Style-only edits (updated_text == "") keep the original text intact;
+    # the export service reads style metadata separately.
     for edit in edits:
         chunk_idx = edit.get("chunk_index")
-        updated = edit.get("updated_text", "")
-        if chunk_idx is not None and chunk_idx in chunk_map:
+        updated = edit.get("updated_text", "").strip()
+        if chunk_idx is not None and chunk_idx in chunk_map and updated:
             chunk_map[chunk_idx] = updated
 
     # Reassemble in block_index order

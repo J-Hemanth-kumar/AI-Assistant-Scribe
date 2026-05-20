@@ -9,15 +9,29 @@ import type { Citation } from '@/types';
 export function App() {
   const { state, dispatch, createSession } = useAppContext();
   const { sidebarOpen, rightPanelOpen } = state.panel;
+  const { theme } = state.settings;
 
-  // Create an initial session on first load
+  // ── Dark mode class toggle ────────────────────────────────────────────
   useEffect(() => {
-    if (state.sessions.length === 0) {
-      console.log('Creating initial session');
-      createSession();
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else if (theme === 'light') {
+      root.classList.remove('dark');
+    } else {
+      // system
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = (e: MediaQueryListEvent | MediaQueryList) => {
+        if (e.matches) root.classList.add('dark');
+        else root.classList.remove('dark');
+      };
+      handler(mq);
+      mq.addEventListener('change', handler as (e: MediaQueryListEvent) => void);
+      return () => mq.removeEventListener('change', handler as (e: MediaQueryListEvent) => void);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.sessions.length, createSession]);
+  }, [theme]);
+
+
 
   const toggleSidebar = () =>
     dispatch({ type: 'SET_PANEL', payload: { sidebarOpen: !sidebarOpen } });
@@ -32,12 +46,12 @@ export function App() {
   };
 
   return (
-    <div className="flex h-full bg-surface-100 overflow-hidden">
+    <div className="flex h-full overflow-hidden bg-surface-50 dark:bg-slate-950 transition-colors duration-300">
       {/* ── Sidebar (left) ─────────────────────────────────────── */}
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-surface-900/20 backdrop-blur-sm z-20 md:hidden"
+          className="fixed inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-sm z-20 md:hidden"
           onClick={toggleSidebar}
           aria-hidden="true"
         />
@@ -46,10 +60,9 @@ export function App() {
       <div
         className={`
           fixed md:relative inset-y-0 left-0 z-30 md:z-auto
-          transition-transform duration-300 ease-in-out h-full
+          transition-all duration-300 ease-in-out h-full
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:w-0 md:overflow-hidden'}
         `}
-        style={{ width: sidebarOpen ? undefined : undefined }}
       >
         <Sidebar onClose={toggleSidebar} />
       </div>
@@ -60,7 +73,7 @@ export function App() {
         <div className="absolute top-3 left-3 z-10 flex gap-1.5 md:hidden">
           <button
             onClick={toggleSidebar}
-            className="btn-icon bg-white shadow-sm border border-surface-200"
+            className="btn-icon bg-white dark:bg-slate-800 shadow-md border border-surface-200 dark:border-slate-700"
             aria-label="Toggle sidebar"
           >
             <PanelLeft size={16} />
@@ -71,7 +84,7 @@ export function App() {
         <div className="hidden md:flex flex-col justify-start pt-3 pl-1.5 shrink-0">
           <button
             onClick={toggleSidebar}
-            className={`btn-icon transition-colors ${sidebarOpen ? 'text-accent-600 bg-accent-50' : ''}`}
+            className={`btn-icon transition-all duration-200 ${sidebarOpen ? 'text-accent-500 bg-accent-50 dark:bg-accent-900/20' : ''}`}
             aria-label="Toggle sidebar"
             title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
           >
@@ -85,8 +98,9 @@ export function App() {
           <div className="absolute top-3 right-3 z-10">
             <button
               onClick={toggleRightPanel}
-              className={`btn-icon bg-white shadow-sm border border-surface-200
-                          ${rightPanelOpen ? 'text-accent-600 bg-accent-50 border-accent-200' : ''}`}
+              className={`btn-icon bg-white dark:bg-slate-800/80 shadow-md border border-surface-200 dark:border-slate-700/50
+                          transition-all duration-200
+                          ${rightPanelOpen ? 'text-accent-500 bg-accent-50 dark:bg-accent-900/30 border-accent-200 dark:border-accent-700/30 shadow-glow' : ''}`}
               aria-label="Toggle right panel"
               title={rightPanelOpen ? 'Hide panel' : 'Show panel'}
             >
@@ -101,7 +115,7 @@ export function App() {
         <div
           className={`
             transition-all duration-300 ease-in-out overflow-hidden h-full shrink-0
-            ${rightPanelOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 pointer-events-none'}
+            ${rightPanelOpen ? 'w-80 opacity-100' : 'w-0 opacity-0 pointer-events-none'}
           `}
         >
           <RightPanel />

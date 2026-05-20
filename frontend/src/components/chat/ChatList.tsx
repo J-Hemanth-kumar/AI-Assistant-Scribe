@@ -1,40 +1,3 @@
-/**
- * src/components/chat/ChatList.tsx
- *
- * Virtualized chat message container.
- *
- * SCROLL STABILITY DURING STREAMING
- * ────────────────────────────────────
- * The key challenge: as streaming tokens arrive, the last message grows.
- * Naive implementations cause the viewport to jump because the DOM height
- * changes and the browser tries to maintain scroll position relative to
- * the top of the content.
- *
- * Solution — "stick to bottom" strategy:
- *   1. `isStuckToBottom` ref tracks whether the user is scrolled to within
- *      STICK_THRESHOLD px of the bottom.
- *   2. During streaming, if stuck, we scroll to bottom after each token.
- *   3. If the user scrolls up manually, isStuckToBottom = false → we stop
- *      auto-scrolling immediately, keeping their scroll position stable.
- *   4. When streaming ends, isStuckToBottom resets to true.
- *
- * HEIGHT MANAGEMENT
- * ──────────────────
- * ChatMessage calls `onHeightReady(id, height)` after its pretext layout
- * resolves.  ChatList stores these in a Map and feeds them to react-virtual's
- * `getItemSize`.  This means:
- *   • The virtual container gets exact row heights (no estimation).
- *   • No DOM measurement is ever needed — heights come from the pretext engine.
- *   • Streaming messages update their stored height on each token batch.
- *
- * OPTIONAL VIRTUALIZATION
- * ────────────────────────
- * Virtualization is only active when messages.length > VIRTUALIZE_THRESHOLD.
- * Below that threshold we render all messages in a plain flex column — which
- * avoids the virtualizer overhead for typical conversation lengths while
- * enabling it automatically for very long sessions.
- */
-
 import {
   useRef,
   useCallback,
@@ -44,6 +7,7 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChatMessage } from './ChatMessage';
 import { bubbleHeight } from '@/lib/pretext/chatLayout';
+import { Sparkles, FileText, Bookmark, Share2 } from 'lucide-react';
 import type { Message, Citation } from '@/types';
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -61,34 +25,70 @@ const ROW_GAP = 16;
 const DEFAULT_ROW_HEIGHT = 80;
 
 // ── Welcome / empty states ─────────────────────────────────────────────────
-// Defined outside component to avoid re-creating on each render
 
 function WelcomeScreen({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center
-                    px-6 animate-fade-in select-none">
-      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent-600 to-accent-400
-                      flex items-center justify-center shadow-lg mb-4">
-        <span className="text-white text-xl font-bold">S</span>
+    <div className="flex flex-col items-center justify-center min-h-full text-center
+                    px-6 py-12 animate-fade-in select-none relative overflow-hidden">
+      {/* Background soft glowing orbs */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-accent-500/10 dark:bg-accent-500/5 blur-[80px] pointer-events-none" />
+      <div className="absolute bottom-1/4 left-1/3 w-60 h-60 rounded-full bg-purple-500/10 dark:bg-purple-500/5 blur-[90px] pointer-events-none" />
+
+      {/* Brand Logo */}
+      <div className="relative group mb-6">
+        <div className="absolute inset-0 bg-gradient-to-tr from-accent-600 to-indigo-500 rounded-3xl blur-md opacity-40 group-hover:opacity-75 transition-opacity duration-500" />
+        <div className="relative w-16 h-16 rounded-3xl bg-gradient-to-tr from-accent-600 via-accent-500 to-indigo-600
+                        flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-300">
+          <Sparkles size={28} className="text-white fill-white/10 animate-pulse" />
+        </div>
       </div>
-      <h2 className="text-xl font-bold text-surface-800 mb-2">Welcome to Scribe</h2>
-      <p className="text-sm text-surface-500 max-w-xs leading-relaxed mb-6">
-        Upload documents and ask questions to get structured, cited answers
-        powered by your RAG pipeline.
+
+      <h2 className="text-2xl font-bold text-surface-800 dark:text-slate-100 tracking-tight mb-2">
+        Welcome to <span className="bg-gradient-to-r from-accent-600 via-accent-500 to-indigo-500 bg-clip-text text-transparent">Scribe</span>
+      </h2>
+      
+      <p className="text-sm text-surface-500 dark:text-slate-400 max-w-sm leading-relaxed mb-8">
+        Your ultimate AI research companion. Upload documents and query them to generate cited, RAG-backed insights instantly.
       </p>
-      <button onClick={onCreate} className="btn-primary">
-        Start a conversation
+
+      <button onClick={onCreate} className="btn-primary px-7 py-3 rounded-2xl gap-2 font-bold shadow-glow-accent scale-100 active:scale-[0.98] transition-all">
+        <Sparkles size={16} />
+        Start a new conversation
       </button>
-      <div className="mt-8 grid grid-cols-3 gap-3 max-w-sm w-full">
+
+      {/* Feature cards */}
+      <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full">
         {[
-          { icon: '📄', label: 'Upload PDFs & Docs' },
-          { icon: '🔖', label: 'Cited answers' },
-          { icon: '📤', label: 'Export results' },
+          { 
+            icon: <FileText size={18} className="text-blue-500 dark:text-blue-400" />, 
+            title: 'Knowledge RAG', 
+            desc: 'Upload PDFs, Word docs, TXT or Markdown files.' 
+          },
+          { 
+            icon: <Bookmark size={18} className="text-emerald-500 dark:text-emerald-400" />, 
+            title: 'Smart Citations', 
+            desc: 'Exact references with page number overlays.' 
+          },
+          { 
+            icon: <Share2 size={18} className="text-violet-500 dark:text-violet-400" />, 
+            title: 'Premium Export', 
+            desc: 'Save as beautiful PDF, Word, or Markdown files.' 
+          },
         ].map((f) => (
-          <div key={f.label}
-               className="bg-white rounded-xl p-3 border border-surface-200 text-center shadow-sm">
-            <div className="text-xl mb-1">{f.icon}</div>
-            <p className="text-[10px] text-surface-500 font-medium leading-tight">{f.label}</p>
+          <div 
+            key={f.title}
+            className="group/card flex flex-col items-center justify-center p-4 
+                       bg-white/60 dark:bg-slate-900/40 backdrop-blur-md 
+                       border border-surface-200/80 dark:border-slate-800/30 rounded-2xl 
+                       shadow-sm hover:shadow-md hover:border-accent-300/50 dark:hover:border-accent-500/30
+                       hover:-translate-y-0.5 transition-all duration-300"
+          >
+            <div className="w-10 h-10 rounded-xl bg-surface-50 dark:bg-slate-800/50 flex items-center justify-center mb-3 
+                            group-hover/card:scale-110 transition-transform duration-300">
+              {f.icon}
+            </div>
+            <h4 className="text-xs font-bold text-surface-700 dark:text-slate-200 mb-1">{f.title}</h4>
+            <p className="text-[10px] text-surface-400 dark:text-slate-500 leading-normal">{f.desc}</p>
           </div>
         ))}
       </div>
@@ -99,13 +99,13 @@ function WelcomeScreen({ onCreate }: { onCreate: () => void }) {
 function EmptyConversation() {
   return (
     <div className="flex flex-col items-center justify-center h-full text-center
-                    px-6 animate-fade-in select-none">
-      <div className="w-10 h-10 rounded-xl bg-surface-100 flex items-center justify-center mb-3">
-        <span className="text-surface-400 text-lg">💬</span>
+                    px-6 py-12 animate-fade-in select-none relative overflow-hidden">
+      <div className="w-12 h-12 rounded-2xl bg-surface-50 dark:bg-slate-900/40 border border-surface-200/50 dark:border-slate-800/30 flex items-center justify-center mb-4 shadow-sm">
+        <Sparkles size={20} className="text-accent-500 animate-pulse animate-duration-1000" />
       </div>
-      <h3 className="text-sm font-semibold text-surface-600 mb-1">No messages yet</h3>
-      <p className="text-xs text-surface-400 max-w-xs leading-relaxed">
-        Type below, or upload a document first to enable RAG-powered responses.
+      <h3 className="text-sm font-bold text-surface-700 dark:text-slate-200 mb-1">Your workspace is ready</h3>
+      <p className="text-xs text-surface-400 dark:text-slate-500 max-w-xs leading-relaxed">
+        Send a message to get started, or upload a document to enable advanced semantic search and citations.
       </p>
     </div>
   );
@@ -229,7 +229,7 @@ export function ChatList({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 md:px-6 py-4"
+        className="flex-1 overflow-y-auto px-4 md:px-6 py-6"
         style={{ display: 'flex', flexDirection: 'column', gap: ROW_GAP }}
       >
         {messages.map((msg) => (
@@ -255,7 +255,7 @@ export function ChatList({
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto px-4 md:px-6"
+      className="flex-1 overflow-y-auto px-4 md:px-6 py-6"
       aria-label="Chat messages"
     >
       {/* Total height sentinel */}

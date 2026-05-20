@@ -127,8 +127,8 @@ export function ChatInput({ onSend, disabled, isConnected }: ChatInputProps) {
           {dropErrors.map((err, i) => (
             <div
               key={i}
-              className="flex items-start gap-1.5 px-2.5 py-1.5 bg-red-50 border
-                         border-red-200 rounded-xl text-[10px] text-red-600"
+              className="flex items-start gap-1.5 px-2.5 py-1.5 bg-red-50 dark:bg-red-950/20 border
+                         border-red-200 dark:border-red-900/40 rounded-xl text-[10px] text-red-600 dark:text-red-400"
             >
               <AlertCircle size={10} className="mt-0.5 shrink-0 text-red-400" />
               <span>
@@ -138,7 +138,7 @@ export function ChatInput({ onSend, disabled, isConnected }: ChatInputProps) {
           ))}
           <button
             onClick={() => setDropErrors([])}
-            className="text-[10px] text-surface-400 hover:text-surface-600 px-1"
+            className="text-[10px] text-surface-400 dark:text-zinc-500 hover:text-surface-600 dark:hover:text-zinc-300 px-1"
           >
             Dismiss
           </button>
@@ -149,11 +149,11 @@ export function ChatInput({ onSend, disabled, isConnected }: ChatInputProps) {
       <div
         {...getRootProps()}
         className={`
-          relative flex items-end gap-2 bg-white border rounded-2xl px-3 py-2.5
-          transition-all duration-200 shadow-sm
+          relative flex items-end gap-2 bg-white dark:bg-slate-900/50 border rounded-2xl px-3 py-2.5
+          transition-all duration-200 shadow-sm dark:shadow-[0_4px_20px_rgba(0,0,0,0.15)]
           ${isDragActive
-            ? 'border-accent-400 ring-2 ring-accent-200 bg-accent-50'
-            : 'border-surface-200 focus-within:border-accent-400 focus-within:shadow-input'
+            ? 'border-accent-400 ring-2 ring-accent-200 dark:ring-accent-950 bg-accent-50 dark:bg-accent-950/20'
+            : 'border-surface-200 dark:border-slate-800/80 focus-within:border-accent-400 dark:focus-within:border-accent-500/50 focus-within:shadow-input dark:focus-within:shadow-[0_0_15px_rgba(99,102,241,0.15)]'
           }
         `}
       >
@@ -164,13 +164,13 @@ export function ChatInput({ onSend, disabled, isConnected }: ChatInputProps) {
         {isDragActive && (
           <div
             className="absolute inset-0 flex items-center justify-center rounded-2xl
-                       bg-accent-50/80 border-2 border-dashed border-accent-400 z-10
+                       bg-accent-50/80 dark:bg-accent-950/80 border-2 border-dashed border-accent-400 dark:border-accent-500 z-10
                        pointer-events-none"
           >
             <div className="flex flex-col items-center gap-1">
               <Paperclip size={20} className="text-accent-500" />
-              <p className="text-xs font-medium text-accent-700">Drop files to attach</p>
-              <p className="text-[10px] text-accent-500">PDF, DOCX, MD, TXT, PNG, JPG · max 20 MB</p>
+              <p className="text-xs font-medium text-accent-700 dark:text-accent-300">Drop files to attach</p>
+              <p className="text-[10px] text-accent-500 dark:text-accent-400">PDF, DOCX, MD, TXT, PNG, JPG · max 20 MB</p>
             </div>
           </div>
         )}
@@ -179,8 +179,8 @@ export function ChatInput({ onSend, disabled, isConnected }: ChatInputProps) {
         <button
           type="button"
           onClick={open}                    // react-dropzone's programmatic open
-          className="shrink-0 p-1.5 rounded-lg text-surface-400 hover:text-surface-600
-                     hover:bg-surface-100 transition-all duration-150 self-end mb-0.5
+          className="shrink-0 p-1.5 rounded-lg text-surface-400 dark:text-zinc-400 hover:text-surface-600 dark:hover:text-zinc-200
+                     hover:bg-surface-100 dark:hover:bg-slate-800/50 transition-all duration-150 self-end mb-0.5
                      focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           aria-label="Attach files"
           title="Attach files (PDF, DOCX, MD, TXT, PNG, JPG — max 20 MB)"
@@ -201,8 +201,8 @@ export function ChatInput({ onSend, disabled, isConnected }: ChatInputProps) {
           }
           disabled={!isConnected || disabled}
           rows={1}
-          className="flex-1 resize-none bg-transparent text-sm text-surface-800
-                     placeholder:text-surface-400 outline-none leading-relaxed
+          className="flex-1 resize-none bg-transparent text-sm text-surface-800 dark:text-zinc-100
+                     placeholder:text-surface-400 dark:placeholder:text-zinc-500 outline-none leading-relaxed
                      py-1 max-h-44 scrollbar-none"
           aria-label="Message input"
           aria-multiline="true"
@@ -217,9 +217,9 @@ export function ChatInput({ onSend, disabled, isConnected }: ChatInputProps) {
             shrink-0 p-2 rounded-xl transition-all duration-150 self-end mb-0.5
             focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500
             ${canSend
-              ? `bg-gradient-to-br from-accent-600 to-accent-500 text-white shadow-sm
+              ? `bg-gradient-to-br from-accent-600 to-accent-500 text-white shadow-sm dark:shadow-[0_0_15px_rgba(99,102,241,0.25)]
                  hover:shadow-md active:scale-95 hover:from-accent-700 hover:to-accent-600`
-              : 'bg-surface-100 text-surface-300 cursor-not-allowed'
+              : 'bg-surface-100 dark:bg-slate-800 text-surface-300 dark:text-zinc-600 cursor-not-allowed'
             }
           `}
           aria-label="Send message"
@@ -231,18 +231,18 @@ export function ChatInput({ onSend, disabled, isConnected }: ChatInputProps) {
       {/* Status bar */}
       <div className="flex items-center justify-between mt-1.5 px-1">
         <span
-          className={`text-[10px] flex items-center gap-1 ${
+          className={`text-[10px] flex items-center gap-1 font-medium ${
             isConnected ? 'text-green-500' : 'text-amber-500'
           }`}
         >
           <span
             className={`w-1.5 h-1.5 rounded-full ${
-              isConnected ? 'bg-green-500' : 'bg-amber-400 animate-pulse'
+              isConnected ? 'bg-green-500' : 'bg-amber-450 animate-pulse'
             }`}
           />
           {isConnected ? 'Connected' : 'Reconnecting…'}
         </span>
-        <span className="text-[10px] text-surface-400">
+        <span className="text-[10px] text-surface-400 dark:text-zinc-500 font-medium">
           {text.length > 0 && `${text.length} chars · `}Enter to send
         </span>
       </div>
@@ -280,22 +280,22 @@ function StagedFileChip({ file, onRemove }: StagedFileChipProps) {
         flex items-center gap-2 pl-2.5 pr-1.5 py-1.5 rounded-xl text-xs border
         transition-all duration-150 max-w-[200px]
         ${isError
-          ? 'bg-red-50 border-red-200 text-red-700'
-          : 'bg-surface-50 border-surface-200 text-surface-700'
+          ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-400'
+          : 'bg-surface-50 dark:bg-slate-900/40 border-surface-200 dark:border-slate-800/60 text-surface-700 dark:text-zinc-350'
         }
       `}
     >
       {isImage ? (
-        <ImageIcon size={12} className="shrink-0 text-surface-400" />
+        <ImageIcon size={12} className="shrink-0 text-surface-400 dark:text-zinc-500" />
       ) : (
-        <FileText size={12} className="shrink-0 text-surface-400" />
+        <FileText size={12} className="shrink-0 text-surface-400 dark:text-zinc-500" />
       )}
 
       <div className="min-w-0">
         <p className="truncate font-medium" style={{ maxWidth: '120px' }}>
           {file.name}
         </p>
-        <p className={`text-[10px] ${isError ? 'text-red-500' : 'text-surface-400'}`}>
+        <p className={`text-[10px] ${isError ? 'text-red-500 dark:text-red-400' : 'text-surface-400 dark:text-zinc-500'}`}>
           {isError ? (file.error ?? 'Error') : statusLabel}
         </p>
       </div>
@@ -305,8 +305,8 @@ function StagedFileChip({ file, onRemove }: StagedFileChipProps) {
       ) : (
         <button
           onClick={onRemove}
-          className="p-0.5 rounded text-surface-400 hover:text-surface-700
-                     hover:bg-surface-200 shrink-0"
+          className="p-0.5 rounded text-surface-400 dark:text-zinc-500 hover:text-surface-700 dark:hover:text-zinc-350
+                     hover:bg-surface-200 dark:hover:bg-slate-800 shrink-0"
           aria-label={`Remove ${file.name}`}
         >
           <X size={11} />

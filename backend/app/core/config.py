@@ -66,13 +66,21 @@ class Settings(BaseSettings):
     # Recommended: 4–8.  Override: CONVERSATION_HISTORY_TURNS=4
     conversation_history_turns: int = 6
 
-    # ── Retrieval orchestrator — hybrid dense + sparse + memory pipeline ───
-    # qdrant    : dense vector search  (semantic similarity, Qdrant)
-    # bm25      : sparse keyword search (BM25Okapi via rank_bm25 library)
-    # mempalace : conversational memory (episodic history per session)
-    # postgres  : last-resort fallback only (not in default QA path)
+    # ── Retrieval orchestrator — sequential cascade pipeline ──────────────
+    #
+    # Chat query cascade (short-circuits on first satisfied stage):
+    #   Stage 1: mempalace  — local episodic memory, zero vector DB cost.
+    #                         Stops if score >= mempalace_confidence_threshold.
+    #   Stage 2: hybrid RAG — qdrant (dense) + bm25 (sparse), concurrent.
+    #                         Only fires if Stage 1 not satisfied.
+    #
+    # Edit queries: qdrant only (chunk_index alignment required).
     retrieval_sources: list[str] = ["qdrant", "bm25", "mempalace"]
     rrf_k: int = 60  # Reciprocal Rank Fusion constant (Cormack et al. 2009)
+
+    # Min MemPalace score to short-circuit Hybrid RAG (Stage 2).
+    # 0.75 = strong match required. Override: MEMPALACE_CONFIDENCE_THRESHOLD=0.80
+    mempalace_confidence_threshold: float = 0.75
 
     allowed_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
     tesseract_lang: str = "eng"

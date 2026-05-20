@@ -15,9 +15,9 @@ export function SettingsPanel() {
           label="Theme"
           value={settings.theme}
           options={[
-            { value: 'light', label: 'Light' },
-            { value: 'dark', label: 'Dark' },
-            { value: 'system', label: 'System' },
+            { value: 'light', label: '☀️ Light' },
+            { value: 'dark', label: '🌙 Dark' },
+            { value: 'system', label: '💻 System' },
           ]}
           onChange={(v) => update({ theme: v as typeof settings.theme })}
         />
@@ -59,9 +59,10 @@ export function SettingsPanel() {
         />
       </Section>
 
-      <div className="mt-2 rounded-xl bg-surface-50 border border-surface-200 p-3">
-        <p className="text-[11px] font-semibold text-surface-600 mb-1">About Scribe</p>
-        <p className="text-[10px] text-surface-400 leading-relaxed">
+      <div className="mt-2 rounded-2xl bg-gradient-to-br from-accent-50 to-purple-50 dark:from-accent-900/10 dark:to-purple-900/10
+                      border border-accent-200/30 dark:border-accent-700/20 p-4">
+        <p className="text-[11px] font-bold text-accent-700 dark:text-accent-400 mb-1">About Scribe</p>
+        <p className="text-[10px] text-surface-500 dark:text-slate-400 leading-relaxed">
           Scribe is a multimodal AI assistant frontend powered by your RAG pipeline.
           Configure the WebSocket and API URLs to point to your backend.
         </p>
@@ -70,12 +71,10 @@ export function SettingsPanel() {
   );
 }
 
-// ── Field primitives ──────────────────────────────────────────────────────
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] font-semibold text-surface-500 uppercase tracking-wide mb-2 px-1">
+      <p className="text-[10px] font-bold text-surface-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-1">
         {title}
       </p>
       <div className="space-y-1">{children}</div>
@@ -95,23 +94,27 @@ function ToggleField({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-surface-50 transition-colors">
+    <div className="flex items-center justify-between px-3 py-2.5 rounded-xl
+                    hover:bg-surface-50 dark:hover:bg-slate-800/30 transition-colors duration-200">
       <div>
-        <p className="text-xs font-medium text-surface-700">{label}</p>
-        <p className="text-[10px] text-surface-400">{description}</p>
+        <p className="text-xs font-medium text-surface-700 dark:text-slate-300">{label}</p>
+        <p className="text-[10px] text-surface-400 dark:text-slate-500">{description}</p>
       </div>
       <button
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative w-9 h-5 rounded-full transition-colors duration-200 focus:outline-none
-                    focus-visible:ring-2 focus-visible:ring-accent-500 shrink-0
-                    ${checked ? 'bg-accent-500' : 'bg-surface-200'}`}
+        className={`relative w-10 h-5.5 rounded-full transition-all duration-300 focus:outline-none
+                    focus-visible:ring-2 focus-visible:ring-accent-500/40 shrink-0
+                    ${checked
+                      ? 'bg-gradient-to-r from-accent-500 to-accent-400 shadow-glow-accent'
+                      : 'bg-surface-200 dark:bg-slate-700'}`}
+        style={{ width: 40, height: 22 }}
       >
         <span
-          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm
-                      transition-transform duration-200
-                      ${checked ? 'translate-x-4' : 'translate-x-0'}`}
+          className={`absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full bg-white shadow-sm
+                      transition-transform duration-300 ease-out
+                      ${checked ? 'translate-x-[18px]' : 'translate-x-0'}`}
         />
       </button>
     </div>
@@ -131,7 +134,7 @@ function TextField({
 }) {
   return (
     <div className="px-1 py-1">
-      <label className="text-[10px] font-semibold text-surface-500 uppercase tracking-wide block mb-1">
+      <label className="text-[10px] font-bold text-surface-400 dark:text-slate-500 uppercase tracking-widest block mb-1">
         {label}
       </label>
       <input
@@ -158,7 +161,7 @@ function SelectField({
 }) {
   return (
     <div className="px-1 py-1">
-      <label className="text-[10px] font-semibold text-surface-500 uppercase tracking-wide block mb-1">
+      <label className="text-[10px] font-bold text-surface-400 dark:text-slate-500 uppercase tracking-widest block mb-1">
         {label}
       </label>
       <select

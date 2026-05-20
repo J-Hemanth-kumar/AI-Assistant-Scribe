@@ -1,9 +1,25 @@
 """
-Retrieval planner — decides which sources to query for a given request.
+Retrieval planner — builds a typed plan describing HOW to retrieve for a query.
 
-Analyzes the query context (doc_id, session_id, is_edit) to build a
-QueryPlan that specifies which retrieval sources to invoke.
+Two plan types:
+  CascadePlan  — for chat: sequential stages with confidence gates.
+                 Stage 1: MemPalace (local memory, no vector DB cost)
+                 Stage 2: Hybrid RAG (Qdrant dense + BM25 sparse, concurrent)
+                 Each stage short-circuits the next if it is "satisfied".
+
+  QueryPlan    — for document edits only: flat concurrent list.
+                 Edit mode needs exact chunk_index alignment from Qdrant.
+                 Cascade is unnecessary because the document IS the source.
+
+Cascade confidence gate:
+  A stage is "satisfied" when at least one returned result has a similarity
+  score >= the stage threshold. A low-scoring MemPalace hit (e.g. 0.30) means
+  the stored memory doesn't strongly match this query — proceed to Hybrid RAG.
+  Any Hybrid RAG result is accepted unconditionally (threshold = 0.0) because
+  document chunks are always relevant when they exist.
 """
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
 
@@ -12,12 +28,46 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Plan data structures
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CascadeStage:
+    """A single stage in the cascade retrieval pipeline."""
+    name: str                        # human-readable label for logging
+    sources: list[str]               # retriever keys to activate at this stage
+    top_k_per_source: dict[str, int] # how many results each source returns
+    confidence_threshold: float      # min score for this stage to be "satisfied"
+                                     # 0.0 = any non-empty result satisfies
+
+
+@dataclass
+class CascadePlan:
+    """
+    Sequential cascade plan for chat queries.
+
+    Stages are attempted in order. The first stage that is "satisfied"
+    (returns >= 1 result with score >= confidence_threshold) stops the cascade
+    and its results are used as context for the LLM.
+
+    If all stages return nothing, the LLM is called with empty context
+    (PromptManager's no-context path handles this gracefully).
+    """
+    stages: list[CascadeStage]
+    context_type: str = "document_qa"
+
+    def __repr__(self) -> str:
+        stage_names = [s.name for s in self.stages]
+        return f"CascadePlan(type={self.context_type!r}, stages={stage_names})"
+
+
 @dataclass
 class QueryPlan:
-    """The plan for a retrieval operation."""
+    """Flat concurrent plan — edit requests only."""
     sources: list[str] = field(default_factory=list)
     top_k_per_source: dict[str, int] = field(default_factory=dict)
-    context_type: str = "document_qa"  # "document_qa" | "general_chat" | "edit_request"
+    context_type: str = "edit_request"
 
     def __repr__(self) -> str:
         return (
@@ -26,15 +76,17 @@ class QueryPlan:
         )
 
 
+# ---------------------------------------------------------------------------
+# Planner
+# ---------------------------------------------------------------------------
+
 class RetrievalPlanner:
     """
-    Analyzes the query + context to build a QueryPlan.
+    Analyses query context and returns the appropriate plan.
 
-    Rules:
-      - If doc_id is present → always include qdrant
-      - If session has prior chat history → include mempalace
-      - Edit requests → qdrant only (needs chunk_index alignment)
-      - No doc_id → mempalace + postgres as fallback
+      Chat  (doc_id present)  → CascadePlan: memory → hybrid RAG
+      Chat  (no doc_id)       → CascadePlan: memory only
+      Edit  (is_edit=True)    → QueryPlan:   qdrant only (chunk_index alignment)
     """
 
     def plan(
@@ -44,54 +96,72 @@ class RetrievalPlanner:
         doc_id: str | None = None,
         session_id: str | None = None,
         is_edit: bool = False,
-    ) -> QueryPlan:
-        """Build a retrieval plan based on the request context."""
-        available_sources = settings.retrieval_sources
+    ) -> CascadePlan | QueryPlan:
+        """Return the correct plan for this request."""
 
+        # ── Edit path: flat qdrant-only, no cascade ───────────────────────
         if is_edit:
-            # Edit requests need exact chunk_index alignment — qdrant only
-            sources = ["qdrant"] if "qdrant" in available_sources else []
-            return QueryPlan(
-                sources=sources,
+            plan = QueryPlan(
+                sources=["qdrant"] if "qdrant" in settings.retrieval_sources else [],
                 top_k_per_source={"qdrant": 10},
                 context_type="edit_request",
             )
+            logger.debug("Planner → %s", plan)
+            return plan
 
-        sources: list[str] = []
-        top_k_per_source: dict[str, int] = {}
-
+        # ── Chat with document: memory → hybrid ───────────────────────────
         if doc_id:
-            # Document-scoped query: primary = qdrant, augment with memory
-            if "qdrant" in available_sources:
-                sources.append("qdrant")
-                top_k_per_source["qdrant"] = 8
+            stages = []
 
-            if "mempalace" in available_sources and session_id:
-                sources.append("mempalace")
-                top_k_per_source["mempalace"] = 3
+            # Stage 1 — MemPalace (local memory, cheapest)
+            # Only added if session_id is present; without it there's no
+            # session to recall from.
+            if "mempalace" in settings.retrieval_sources and session_id:
+                stages.append(
+                    CascadeStage(
+                        name="memory",
+                        sources=["mempalace"],
+                        top_k_per_source={"mempalace": 5},
+                        confidence_threshold=settings.mempalace_confidence_threshold,
+                    )
+                )
 
-            # Postgres as fallback (lower priority)
-            if "postgres" in available_sources:
-                sources.append("postgres")
-                top_k_per_source["postgres"] = 3
+            # Stage 2 — Hybrid RAG (Qdrant dense + BM25 sparse, concurrent)
+            # Both run together inside this single stage via ThreadPoolExecutor.
+            # Threshold = 0.0: any non-empty result from the document is useful.
+            hybrid_sources = [
+                s for s in ["qdrant", "bm25"]
+                if s in settings.retrieval_sources
+            ]
+            if hybrid_sources:
+                stages.append(
+                    CascadeStage(
+                        name="hybrid_rag",
+                        sources=hybrid_sources,
+                        top_k_per_source={
+                            "qdrant": 8,
+                            "bm25": 8,
+                        },
+                        confidence_threshold=0.0,
+                    )
+                )
 
-            context_type = "document_qa"
-        else:
-            # No document — general chat, rely on memory
-            if "mempalace" in available_sources:
-                sources.append("mempalace")
-                top_k_per_source["mempalace"] = 5
+            plan = CascadePlan(stages=stages, context_type="document_qa")
+            logger.debug("Planner → %s", plan)
+            return plan
 
-            if "postgres" in available_sources:
-                sources.append("postgres")
-                top_k_per_source["postgres"] = 3
+        # ── Chat without document: memory only ───────────────────────────
+        stages = []
+        if "mempalace" in settings.retrieval_sources:
+            stages.append(
+                CascadeStage(
+                    name="memory",
+                    sources=["mempalace"],
+                    top_k_per_source={"mempalace": 6},
+                    confidence_threshold=0.0,  # any memory hit is useful
+                )
+            )
 
-            context_type = "general_chat"
-
-        plan = QueryPlan(
-            sources=sources,
-            top_k_per_source=top_k_per_source,
-            context_type=context_type,
-        )
-        logger.debug("Built retrieval plan: %s", plan)
+        plan = CascadePlan(stages=stages, context_type="general_chat")
+        logger.debug("Planner → %s", plan)
         return plan

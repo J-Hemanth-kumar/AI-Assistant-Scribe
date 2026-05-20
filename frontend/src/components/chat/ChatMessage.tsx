@@ -108,7 +108,7 @@ const LineRenderer = React.memo(function LineRenderer({
     case 'h2':
       return (
         <div style={baseStyle}>
-          <span className={`font-bold text-sm ${isUser ? 'text-white' : 'text-surface-900'}`}>
+          <span className={`font-bold text-sm ${isUser ? 'text-white' : 'text-surface-900 dark:text-zinc-100'}`}>
             {dec.text}
           </span>
         </div>
@@ -117,7 +117,7 @@ const LineRenderer = React.memo(function LineRenderer({
     case 'h3':
       return (
         <div style={baseStyle}>
-          <span className={`font-semibold text-[13px] ${isUser ? 'text-white' : 'text-surface-900'}`}>
+          <span className={`font-semibold text-[13px] ${isUser ? 'text-white' : 'text-surface-900 dark:text-zinc-100'}`}>
             {dec.text}
           </span>
         </div>
@@ -126,7 +126,7 @@ const LineRenderer = React.memo(function LineRenderer({
     case 'bullet':
       return (
         <div style={{ ...baseStyle, gap: 6 }}>
-          <span className={`shrink-0 text-[8px] ${isUser ? 'text-white/60' : 'text-accent-400'}`}>●</span>
+          <span className={`shrink-0 text-[8px] ${isUser ? 'text-white/60' : 'text-accent-400 dark:text-accent-400'}`}>●</span>
           <InlineLine text={dec.text} isUser={isUser} citations={citations} onCitationClick={onCitationClick} />
         </div>
       );
@@ -135,10 +135,10 @@ const LineRenderer = React.memo(function LineRenderer({
       return (
         <div style={baseStyle}>
           <code
-            className={`font-mono text-[12px] px-1 rounded ${
+            className={`font-mono text-[12px] px-1.5 py-0.5 rounded ${
               isUser
                 ? 'bg-white/10 text-white'
-                : 'bg-surface-100 text-surface-700'
+                : 'bg-surface-100 text-surface-700 dark:bg-slate-800 dark:text-zinc-300'
             }`}
           >
             {dec.text}
@@ -173,7 +173,7 @@ function InlineLine({ text, isUser, citations, onCitationClick }: InlineLineProp
   const parts = parseInlineCitations(text);
 
   return (
-    <span className={isUser ? 'text-white' : 'text-surface-800'}>
+    <span className={isUser ? 'text-white' : 'text-surface-800 dark:text-zinc-200'}>
       {parts.map((seg, i) => {
         if (seg.type === 'citation') {
           const cit = citations.find((c) => c.index === seg.index);
@@ -183,11 +183,11 @@ function InlineLine({ text, isUser, citations, onCitationClick }: InlineLineProp
               onClick={() => cit && onCitationClick?.(cit)}
               title={cit ? `${cit.sourceTitle}: ${cit.excerpt}` : undefined}
               className={`
-                inline-flex items-center px-1 py-0 rounded text-[10px] font-semibold
-                mx-0.5 cursor-pointer transition-colors
+                inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold
+                mx-0.5 cursor-pointer transition-all duration-200
                 ${isUser
                   ? 'bg-white/20 text-white hover:bg-white/30'
-                  : 'bg-accent-50 text-accent-700 border border-accent-200 hover:bg-accent-100'
+                  : 'bg-accent-50 text-accent-700 border border-accent-200 hover:bg-accent-100 dark:bg-accent-950/40 dark:text-accent-300 dark:border-accent-800/60 dark:hover:bg-accent-900/60'
                 }
               `}
               aria-label={`Citation ${seg.index}`}
@@ -202,7 +202,7 @@ function InlineLine({ text, isUser, citations, onCitationClick }: InlineLineProp
           <React.Fragment key={i}>
             {boldParts.map((part, j) =>
               j % 2 === 1
-                ? <strong key={j} className={isUser ? 'text-white' : 'text-surface-900'}>{part}</strong>
+                ? <strong key={j} className={isUser ? 'text-white' : 'text-surface-900 dark:text-white'}>{part}</strong>
                 : <React.Fragment key={j}>{part}</React.Fragment>
             )}
           </React.Fragment>
@@ -216,11 +216,11 @@ function InlineLine({ text, isUser, citations, onCitationClick }: InlineLineProp
 
 function TypingDots() {
   return (
-    <div className="flex items-center gap-1 px-4 py-2" aria-label="Assistant is typing">
+    <div className="flex items-center gap-1.5 px-5 py-3" aria-label="Assistant is typing">
       {[0, 150, 300].map((delay) => (
         <span
           key={delay}
-          className="w-1.5 h-1.5 rounded-full bg-surface-400 animate-bounce"
+          className="w-1.5 h-1.5 rounded-full bg-surface-400 dark:bg-slate-500 animate-bounce"
           style={{ animationDelay: `${delay}ms` }}
         />
       ))}
@@ -248,7 +248,6 @@ export const ChatMessage = React.memo(function ChatMessage({
 }: ChatMessageProps) {
   const isUser   = message.role === 'user';
   const [copied, setCopied] = useState(false);
-  const [useSimpleLayout, setUseSimpleLayout] = useState(false);
 
   // Debug logging for content changes
   useEffect(() => {
@@ -282,14 +281,6 @@ export const ChatMessage = React.memo(function ChatMessage({
     setTimeout(() => setCopied(false), 2000);
   }, [message.content]);
 
-  // If content is very short or seems corrupted, use simple layout
-  useEffect(() => {
-    if (message.content && message.content.length === 1 && message.isStreaming) {
-      console.warn('Detected single character streaming, falling back to simple layout');
-      setUseSimpleLayout(true);
-    }
-  }, [message.content, message.isStreaming]);
-
   return (
     <div
       className={`flex ${isUser ? 'justify-end' : 'justify-start'} w-full
@@ -298,9 +289,9 @@ export const ChatMessage = React.memo(function ChatMessage({
     >
       {/* Assistant avatar */}
       {!isUser && (
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent-600 to-accent-400
+        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent-600 to-accent-400 dark:from-accent-500 dark:to-accent-400
                         flex items-center justify-center text-white text-[10px] font-bold
-                        shrink-0 mt-0.5 mr-2.5 shadow-sm select-none">
+                        shrink-0 mt-0.5 mr-2.5 shadow-sm dark:shadow-[0_0_12px_rgba(99,102,241,0.25)] select-none">
           S
         </div>
       )}
@@ -314,10 +305,10 @@ export const ChatMessage = React.memo(function ChatMessage({
         {/* ── Message bubble ─────────────────────────────────────────── */}
         <div
           className={`
-            relative rounded-2xl overflow-hidden shadow-bubble
+            relative rounded-2xl overflow-hidden shadow-bubble dark:shadow-dark-bubble
             ${isUser
-              ? 'bg-gradient-to-br from-accent-600 to-accent-500 rounded-br-sm'
-              : 'bg-white border border-surface-200 rounded-bl-sm'
+              ? 'bg-gradient-to-br from-accent-600 to-accent-500 dark:from-accent-600 dark:to-accent-700 rounded-br-sm border dark:border-accent-500/20'
+              : 'bg-white border border-surface-200 dark:bg-slate-900/60 dark:border-slate-800/80 backdrop-blur-md rounded-bl-sm'
             }
           `}
           /*
@@ -382,7 +373,7 @@ export const ChatMessage = React.memo(function ChatMessage({
               {/* Blinking cursor (CSS only — no text injection, no layout change) */}
               {message.isStreaming && message.content !== '' && lines.length > 0 && (
                 <span
-                  className="absolute w-0.5 h-3.5 bg-accent-400 animate-pulse"
+                  className="absolute w-0.5 h-3.5 bg-accent-400 dark:bg-accent-500 animate-pulse"
                   style={{
                     top: (lines.length - 1) * CHAT_LINE_HEIGHT + 4,
                     right: 16
@@ -396,14 +387,14 @@ export const ChatMessage = React.memo(function ChatMessage({
 
         {/* ── Meta row ────────────────────────────────────────────────── */}
         <div className={`flex items-center gap-2 px-1 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-          <span className="text-[10px] text-surface-400">
+          <span className="text-[10px] text-surface-400 dark:text-slate-500 font-medium">
             {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
           {!isUser && !message.isStreaming && (
             <button
               onClick={handleCopy}
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5
-                         text-surface-400 hover:text-surface-600"
+              className="opacity-0 group-hover:opacity-100 transition-all duration-200 p-0.5
+                         text-surface-400 hover:text-surface-600 dark:text-slate-500 dark:hover:text-slate-300"
               aria-label="Copy response"
             >
               {copied
@@ -417,8 +408,9 @@ export const ChatMessage = React.memo(function ChatMessage({
 
       {/* User avatar */}
       {isUser && (
-        <div className="w-7 h-7 rounded-lg bg-surface-200 flex items-center justify-center
-                        text-surface-500 text-[10px] font-bold shrink-0 mt-0.5 ml-2.5 select-none">
+        <div className="w-7 h-7 rounded-lg bg-surface-200 dark:bg-slate-800 flex items-center justify-center
+                        text-surface-500 dark:text-slate-400 text-[10px] font-bold shrink-0 mt-0.5 ml-2.5
+                        border dark:border-slate-700/50 shadow-sm select-none">
           U
         </div>
       )}
